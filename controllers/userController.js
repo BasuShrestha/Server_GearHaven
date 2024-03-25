@@ -295,7 +295,6 @@ const forgetPassword = (req, res)=>{
         });
     });
 
-
 }
 
 const forgetPasswordLoad = (req, res) => {

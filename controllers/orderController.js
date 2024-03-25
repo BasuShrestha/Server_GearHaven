@@ -1,5 +1,6 @@
 const { body } = require('express-validator');
 const {Order, OrderDetail} = require('../models/order');
+const sendNotification = require("../helpers/sendNotification");
 
 exports.createNewOrder = (req, res) => {
     if (!req.body) {
@@ -99,7 +100,7 @@ exports.updateOrderStatus = (req, res) => {
     const productId = req.body.productId;
     const status = req.body.status;
 
-    OrderDetail.updateOrderStatus(sellerId, orderId, productId, status, (error, data) => {
+    OrderDetail.updateOrderStatus(sellerId, orderId, productId, status, async (error, data) => {
         if (error) {
             if (error.kind === "not_found") {
                 res.status(404).send({
@@ -110,7 +111,20 @@ exports.updateOrderStatus = (req, res) => {
                     message: "Error updating Order with id " + orderId
                 });
             }
-        } else res.status(201).send(data);
+        } else {
+            try {
+                await sendNotification('e5L8tqJZSSGRbi56dkkeac:APA91bEK2oZ1VJ6N45GmgxCFE1bObfe3u1fQmjNsv0Nn0FaYGPj-QQfnGhuMc7LWXJucc-wRQ1nJEwVqxRG7UdkZmRRneGnR2SRMdEtL7lsyaXpcUn2YSIe51gw2ZtZg7imPkgEFa3fB',
+                 'Delivery Status Changed', `The delivery status for the order ${req.body.orderId} has been changed to ${req.body.status}`,
+                 {
+                    orderId: req.body.orderId,
+                    status: req.body.status
+                 });
+                console.log('Notification sent successfully');
+            } catch (notificationError) {
+                console.error('Error sending notification:', notificationError);
+            }
+            return res.status(201).send(data);
+        } 
     });
 }
 

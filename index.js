@@ -4,6 +4,9 @@ const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 
+const  {initializeApp, applicationDefault} = require('firebase-admin/app');
+const {getMessaging} = require('firebase-admin/messaging');
+
 require("dotenv").config();
 
 
@@ -16,11 +19,19 @@ const productRoute = require('./routes/productRoute.js');
 const orderRoute = require('./routes/orderRoute.js');
 const paymentRoute = require('./routes/paymentRoute.js');
 
+
+process.env.GOOGLE_APPLICATION_CREDENTIALS;
+
 const app = express();
 app.use(express.json());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({extended: true}));
 //app.use(express.static('public'));
+
+initializeApp({
+    credential: applicationDefault(),
+    projectId: 'gearhaven-project'
+});
 
 app.use(cors());
 app.use('/', userRoute);

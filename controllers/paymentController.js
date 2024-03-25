@@ -1,4 +1,6 @@
 const Payment = require('../models/payment');
+const { getMessaging } = require("firebase-admin/messaging");
+const sendNotification = require("../helpers/sendNotification");
 
 exports.saveSalesPayment = (req, res) => {
     if (!req.body) {
@@ -38,15 +40,24 @@ exports.saveSalesPayment = (req, res) => {
                 otherData: otherData.idx
             });
     
-            Payment.saveSalesPayment(newPayment, (error, data) => {
+            Payment.saveSalesPayment(newPayment, async (error, data) => {
                 if (error) {
                     return res.status(500).send({
                         message: error.message || "Some error occurred while inserting payment."
                     });
                 } else {
+                    try {
+                        await sendNotification('f0q1fwW0TYWV4w0Clopa52:APA91bFiATnHR3i5bDEcEfTImGqM2EbRSCNsDmkWmOweO5-UYZ2FpUXmWeTg21R7v_-Yx15_fj2q-KjULKc0M83HBusHB6E-O5Z70C4q_2BdQq6gvlpM_klw5sF9wS2BCqSc7r0IU8PO',
+                         'Order Made', `Hello`,`Your payment of ${req.body.amountPaid} has been successfully processed.`);
+                        console.log('Notification sent successfully');
+                    } catch (notificationError) {
+                        console.error('Error sending notification:', notificationError);
+                    }
                     return res.status(201).send(data);
                 }
             });
+
+            
         });
     } catch (error) {
         return res.status(400).send({ message: error.message || "Invalid 'otherData' format!" });
