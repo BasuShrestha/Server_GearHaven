@@ -18,6 +18,8 @@ const productConditionRoute = require('./routes/productConditionRoute.js');
 const productRoute = require('./routes/productRoute.js');
 const orderRoute = require('./routes/orderRoute.js');
 const paymentRoute = require('./routes/paymentRoute.js');
+const rentingRoute = require('./routes/rentingRoute.js');
+const wishlistRoute = require('./routes/wishlistRoute.js');
 
 
 process.env.GOOGLE_APPLICATION_CREDENTIALS;
@@ -42,6 +44,8 @@ app.use('/', productConditionRoute);
 app.use('/', productRoute);
 app.use('/', orderRoute);
 app.use('/', paymentRoute);
+app.use('/', rentingRoute);
+app.use('/', wishlistRoute);
 
 const Port = process.env.Port || 5000;
 

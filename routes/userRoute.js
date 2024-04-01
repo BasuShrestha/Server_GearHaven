@@ -35,6 +35,7 @@ const userController = require('../controllers/userController.js');
 router.use(express.static('public'));
 
 router.post('/register', signUpValidation, userController.register);
+router.post('/verifyOTP', userController.verifyUserOTP);
 router.post('/login',loginValidation, userController.login);
 router.post('/refresh-token', userController.verifyRefreshToken);
 router.get('/get-user', userController.verifyAccessToken, userController.getUser);

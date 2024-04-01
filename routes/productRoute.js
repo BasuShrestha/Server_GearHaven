@@ -67,7 +67,9 @@ router.post('/products/sale', upload.single('image'), productController.createFo
 router.post('/products/rent', upload.single('image'), productController.createForRent);
 
 // Update a product
-router.put('/products/:productId', upload.single('image'), productController.updateProduct);
+router.put('/products/sales/:productId', upload.single('image'), productController.updateSalesProduct);
+
+router.put('/products/rent/:productId', upload.single('image'), productController.updateRentalProduct);
 
 // Soft Delete a product
 router.delete('/products/:productId', productController.deleteProductById)
@@ -89,5 +91,7 @@ router.get('/products-sale', productController.getAllSaleProducts);
 
 // Get all rent products
 router.get('/products-rent', productController.getAllRentProducts);
+
+router.get('/products-rent/:productId', productController.getRentalProductById);
 
 module.exports = router;

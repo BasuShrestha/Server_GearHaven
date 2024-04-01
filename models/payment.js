@@ -1,11 +1,13 @@
 const axios = require('axios');
 
 const conn = require('../connection/db');
+const Wishlist = require('./wishlist');
 const {KHALTI_SECRET_KEY} = process.env;
 
 const Payment = function(payment) {
     this.userId = payment.userId,
-    this.orderId = payment.orderId,
+    this.transactionId = payment.transactionId,
+    this.transactionType = payment.transactionType,
     this.amountPaid = payment.amountPaid,
     this.otherData = payment.otherData
 }
@@ -24,7 +26,6 @@ Payment.verifyPayment = (token, amount, callback) => {
         callback(null, response.data);
     }).catch(error => {
         console.error(error.response ? error.response.data : error);
-        // callback(error, null);
         callback(error.response ? error.response.data : { message: error.message }, null);
     });
 }
@@ -36,8 +37,8 @@ Payment.saveSalesPayment = (newPayment, result) => {
             return result(err, null);
         }
 
-        conn.query(`INSERT INTO payments (user_id, order_id, amount_paid, other_data) VALUES (?, ?, ?, ?)`, 
-                   [newPayment.userId, newPayment.orderId, newPayment.amountPaid, newPayment.otherData], 
+        conn.query(`INSERT INTO payments (user_id, transaction_id, transaction_type, amount_paid, other_data) VALUES (?, ?, ?, ?, ?)`, 
+                   [newPayment.userId, newPayment.transactionId, newPayment.transactionType, newPayment.amountPaid, newPayment.otherData], 
                    (err, res) => {
             if (err) {
                 return conn.rollback(() => {
@@ -102,6 +103,77 @@ Payment.saveSalesPayment = (newPayment, result) => {
                 });
             });
         });
+    });
+};
+
+Payment.saveRentalPayment = (newRenting, newPayment, result) => {
+    conn.beginTransaction(err => {
+        if (err) {
+            console.error(`Transaction Begin Error: ${err.message}`);
+            return result(err, null);
+        }
+
+        conn.query(`INSERT INTO rentings (product_id, owner_id, renter_id, from_date, to_date, payment_status, renting_status) 
+                    VALUES(?, ?, ?, ?, ?, ?, ?)`,
+                    [newRenting.product_id, newRenting.owner_id, newRenting.renter_id, newRenting.from_date, newRenting.to_date, newRenting.payment_status, newRenting.renting_status],
+                    (err, rentingRes) => {
+            if (err) {
+                return conn.rollback(() => {
+                    console.error(`Renting Insert Error: ${err}`);
+                    result(err, null);
+                });
+            }
+            
+            const rentingId = rentingRes.insertId;
+
+            conn.query(`INSERT INTO payments (user_id, transaction_id, transaction_type, amount_paid, other_data) VALUES (?, ?, ?, ?, ?)`, 
+                        [newRenting.renter_id, rentingId, newPayment.transactionType, newPayment.amountPaid, newPayment.otherData], 
+                        (err, paymentRes) => {
+                if (err) {
+                    return conn.rollback(() => {
+                        console.error(`Payment Insert Error: ${err}`);
+                        result(err, null);
+                    });
+                }
+
+                Wishlist.findWishlistItemByUserIdAndProductId(newRenting.renter_id, newRenting.product_id, (findError, findResult) => {
+                    if (findError) {
+                        return conn.rollback(() => {
+                            console.error(`Error checking wishlist: ${findError}`);
+                            result(findError, null);
+                        });
+                    }
+
+                    if (findResult) {
+                        Wishlist.removeFromWishlistByUserId(newRenting.renter_id, newRenting.product_id, (wishlistError, wishlistData) => {
+                            if (wishlistError) {
+                                return conn.rollback(() => {
+                                    console.error(`Error removing from wishlist: ${wishlistError}`);
+                                    result(wishlistError, null);
+                                });
+                            }
+                            console.log(wishlistData.message);
+                            proceedToCommit();
+                        });
+                    } else {
+                        proceedToCommit();
+                    }
+                });
+            });
+        });
+
+        function proceedToCommit() {
+            conn.commit(err => {
+                if (err) {
+                    return conn.rollback(() => {
+                        console.error(`Transaction Commit Error: ${err}`);
+                        result(err, null);
+                    });
+                }
+                //console.log("Payment inserted and wishlist updated if necessary: ", { id: rentingId, ...newRenting });
+                result(null, { message: "Payment successful for the rental, wishlist item removed if it was present." });
+            });
+        }
     });
 };
 

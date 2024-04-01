@@ -93,7 +93,7 @@ OrderDetail.createOrderDetail = (newOrderDetails, result) => {
 }
 
 OrderDetail.getSoldProductsBySellerId = (id, result) => {
-    conn.query(`SELECT od.*, o.user_id, o.order_date, o.order_total, u.user_name, u.user_contact, u.user_location, 
+    conn.query(`SELECT od.*, o.user_id, o.order_date, o.order_total, u.user_name, u.user_contact, u.user_location, u.fcm_token,
                 p.product_name, p.product_image 
                 FROM orderdetails od JOIN orders o ON od.order_id = o.order_id
                 JOIN users u ON o.user_id = u.user_id 
@@ -118,7 +118,7 @@ OrderDetail.getSoldProductsBySellerId = (id, result) => {
 }
 
 OrderDetail.getOrderedProductsByBuyerId = (id, result) => {
-    conn.query(`SELECT od.*, o.user_id, o.order_date, o.order_total, u.user_name, u.user_contact, u.user_location, p.product_name, p.product_image 
+    conn.query(`SELECT od.*, o.user_id, o.order_date, o.order_total, u.user_name, u.user_contact, u.user_location, u.fcm_token, p.product_name, p.product_image 
                 FROM orderdetails od JOIN orders o ON od.order_id = o.order_id
                 JOIN users u ON od.seller_id = u.user_id 
                 JOIN products p ON od.product_id = p.product_id 

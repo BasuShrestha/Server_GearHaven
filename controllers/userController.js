@@ -1,11 +1,12 @@
 const { validationResult } = require('express-validator');
 const bcrypt = require('bcryptjs');
-const conn = require('../connection/db');
 const randomstring = require('randomstring');
-const sendMail= require('../helpers/sendMail');
 const jwt = require('jsonwebtoken');
 const { response } = require('express');
 const {JWT_SECRET, ACCESS_TOKEN_SECRET, REFRESH_TOKEN_SECRET} =process.env;
+const conn = require('../connection/db');
+const sendMail= require('../helpers/sendMail');
+const {sendOTP, verifyOTP} = require('../helpers/sendOtp');
 
 const register = (req, res) => {
     const errors = validationResult(req);
@@ -27,10 +28,20 @@ const register = (req, res) => {
 
             if (result && result.length) {
                 return res.status(409).send({
-                    message: 'This user already exists!'
+                    message: 'The user already exists'
                 });
                 
             } else {
+                
+                sendOTP(req.body.email, req.body.username, (error, results) => {
+                    if (error) {
+                        return res.status(500).send({
+                            message: "Error sending OTP",
+                            data: error,
+                        });
+                    }
+
+
                 bcrypt.hash(req.body.password, 10, (hashErr, hash) => {
                     if (hashErr) {
                         return res.status(500).send({
@@ -40,8 +51,9 @@ const register = (req, res) => {
                     const userName = conn.escape(req.body.username);
                     const userLocation = conn.escape(req.body.location);
                     const userContact = conn.escape(req.body.contact);
+                    const fcmToken = conn.escape(req.body.fcmToken);
 
-                    const sql = `INSERT INTO users (user_name, user_email, user_password, user_location, user_contact) VALUES (${userName}, ${userEmail}, ${conn.escape(hash)}, ${userLocation}, ${userContact})`;
+                    const sql = `INSERT INTO users (user_name, user_email, user_password, user_location, user_contact, fcm_token) VALUES (${userName}, ${userEmail}, ${conn.escape(hash)}, ${userLocation}, ${userContact}, ${fcmToken})`;
 
                     conn.query(sql, (insertErr) => {
                         if (insertErr) {
@@ -49,33 +61,32 @@ const register = (req, res) => {
                                 message: insertErr.sqlMessage || 'Database error'
                             });
                         }
-                        else{
-                            let mailSubject = 'Mail Verification';
-                            const randomToken = randomstring.generate();
-                            let content = `<p>Hello,${req.body.username}, \nPlease <a href="http://localhost:5000/email-verification?token=${randomToken}">Verify</a> your Mail`
-                            sendMail(req.body.email, mailSubject, content);
-
-                            conn.query('UPDATE users SET token=? WHERE user_email=?', [randomToken,req.body.email], (error,result,fields)=>{
-                                if(error){
-                                    console.error(error);
-                                    return res.status(500).send({
-                                        message: error
-                                    });    
-                                } else {
-                                    return res.status(200).send({
-                                        message : 'Registration Successful',
-                                    });   
-                                }
-                            });
-
+                        return res.status(200).send({
+                            message: 'Signed up successfully. Please check your email for the OTP to complete your registration.',
+                            data:results,
+                        });
+                    });   
                     } 
-                });   
-            } 
-        });   
-    } 
-});
-};
+                });
+            });   
+        }
+    }); 
+}
 
+const verifyUserOTP = (req, res) => {
+    verifyOTP(req.body, (error, results)=>{
+        if(error){
+            return res.status(400).send({
+                message:"error",
+                data:error,
+            });
+        }
+        return res.status(200).send({
+            message:"Success",
+            data:results,
+        });
+    });
+};
 
 const verifyEmail = (req, res) => {
     var token = req.query.token;
@@ -134,7 +145,7 @@ const login = (req,res) => {
                          refreshTokenExpiration.setDate(refreshTokenExpiration.getDate() + 7);
                          conn.query('UPDATE users SET refresh_token_expiration = ?, refresh_token = ? WHERE user_id = ?', 
                          [refreshTokenExpiration, refreshToken, result[0]['user_id']],
-                         (err, result) => {
+                         (err, rest) => {
                             if(err) {
                                 return res.status(500).send({
                                     message: 'Internal Server Error'
@@ -145,7 +156,7 @@ const login = (req,res) => {
                                message : 'Login successful!',
                                accessToken: accessToken, 
                                refreshToken: refreshToken,
-                               user:result[0]
+                               user: result[0]
                            });
                          });
                     } else {
@@ -435,6 +446,7 @@ const updateProfile = (req,res)=>{
 
 module.exports = {
     register,
+    verifyUserOTP,
     verifyEmail,
     login,
     verifyRefreshToken,

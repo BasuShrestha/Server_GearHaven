@@ -26,7 +26,7 @@ exports.createNewOrder = (req, res) => {
 
             cartItems.forEach(item => {
                 const newOrderDetail = new OrderDetail({
-                    orderId: data.id, // data.id is the newly created order's ID
+                    orderId: data.id,
                     productId: item.product.product_id,
                     sellerId: item.product.productowner_id,
                     quantity: item.quantity,
@@ -99,6 +99,7 @@ exports.updateOrderStatus = (req, res) => {
     const orderId = req.body.orderId;
     const productId = req.body.productId;
     const status = req.body.status;
+    const buyerFcm = req.body.buyerFcm;
 
     OrderDetail.updateOrderStatus(sellerId, orderId, productId, status, async (error, data) => {
         if (error) {
@@ -113,11 +114,10 @@ exports.updateOrderStatus = (req, res) => {
             }
         } else {
             try {
-                await sendNotification('e5L8tqJZSSGRbi56dkkeac:APA91bEK2oZ1VJ6N45GmgxCFE1bObfe3u1fQmjNsv0Nn0FaYGPj-QQfnGhuMc7LWXJucc-wRQ1nJEwVqxRG7UdkZmRRneGnR2SRMdEtL7lsyaXpcUn2YSIe51gw2ZtZg7imPkgEFa3fB',
+                await sendNotification.sendNotification(`${buyerFcm}`,
                  'Delivery Status Changed', `The delivery status for the order ${req.body.orderId} has been changed to ${req.body.status}`,
                  {
-                    orderId: req.body.orderId,
-                    status: req.body.status
+                    messageType: "deliveryStatus"
                  });
                 console.log('Notification sent successfully');
             } catch (notificationError) {

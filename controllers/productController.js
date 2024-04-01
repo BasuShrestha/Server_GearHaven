@@ -34,23 +34,26 @@ exports.createForRent = (req, res) => {
         return res.status(400).send({ message: "Product data is missing!" });
     }
 
+    let ratePerDay = req.body.ratePerDay;
+
     const newProduct = new Product({
         name: req.body.name,
-        price: req.body.price,
+        price: req.body.price ?? 0,
         stockQuantity: req.body.stockQuantity,
         description: req.body.description,
         image: req.file.filename,
         categoryId: req.body.categoryId,
         sizeId: req.body.sizeId,
-        conditionId: req.body.conditionId,
+        conditionId: 8,
+        // conditionId: req.body.conditionId ?? 8,
         ownerId: req.body.ownerId
-        // forRent: req.body.forRent
+        // forRent is implicitly 1 (true) for renting
     });
 
-    Product.createForRent(newProduct, (error, data) => {
+    Product.createForRent(newProduct, ratePerDay, (error, data) => {
         if (error) {
             res.status(500).send({
-                message: error.message || "Some error occurred while inserting the product"
+                message: error.message || "Some error occurred while inserting the product and rate"
             });
         } else {
             res.status(201).send(data);
@@ -93,7 +96,7 @@ exports.createForRent = (req, res) => {
 //     });
 // };
 
-exports.updateProduct = (req, res) => {
+exports.updateSalesProduct = (req, res) => {
     if (!req.body) {
         return res.status(400).send({ message: "Product data is missing!" });
     }
@@ -114,7 +117,7 @@ exports.updateProduct = (req, res) => {
 
     if (req.file) {
         updatedProduct.image = req.file.filename;
-        Product.updateProductWithImage(productId, updatedProduct, (error, data) => {
+        Product.updateSalesProductWithImage(productId, updatedProduct, (error, data) => {
             if (error) {
                 if (error.kind === "not_found") {
                     res.status(404).send({
@@ -128,7 +131,7 @@ exports.updateProduct = (req, res) => {
             } else res.status(201).send(data);
         });
     } else {
-        Product.updateProduct(productId, updatedProduct, (error, data) => {
+        Product.updateSalesProduct(productId, updatedProduct, (error, data) => {
             if (error) {
                 if (error.kind === "not_found") {
                     res.status(404).send({
@@ -143,6 +146,62 @@ exports.updateProduct = (req, res) => {
         });
     }
 };
+
+exports.updateRentalProduct = (req, res) => {
+    if (!req.body) {
+        return res.status(400).send({ message: "Product data is missing!" });
+    }
+
+    const productId = req.params.productId;
+    const newRatePerDay = req.body.ratePerDay;
+
+    let updatedProduct = {
+        name: req.body.name,
+        price: req.body.price ?? 0.00,
+        stockQuantity: req.body.stockQuantity,
+        description: req.body.description,
+        categoryId: req.body.categoryId,
+        sizeId: req.body.sizeId,
+        conditionId: req.body.conditionId ?? 8,
+        ownerId: req.body.ownerId
+    };
+
+    if (req.file) {
+        updatedProduct.image = req.file.filename;
+        Product.updateProductForRentWithImage(productId, updatedProduct, newRatePerDay, (error, data) => {
+            if (error) {
+                if (error.kind === "not_found") {
+                    res.status(404).send({
+                        message: `Not found Product with id ${productId}.`
+                    });
+                } else {
+                    res.status(500).send({
+                        message: "Error updating Product with id " + productId
+                    });
+                }
+            } else {
+                res.status(201).send(data);
+            }
+        });
+    } else {
+        Product.updateProductForRent(productId, updatedProduct, newRatePerDay, (error, data) => {
+            if (error) {
+                if (error.kind === "not_found") {
+                    res.status(404).send({
+                        message: `Not found Product with id ${productId}.`
+                    });
+                } else {
+                    res.status(500).send({
+                        message: "Error updating Product with id " + productId
+                    });
+                }
+            } else {
+                res.status(201).send(data);
+            }
+        });
+    }
+};
+
 
 exports.deleteProductById = (req, res) => {
     const productId = req.params.productId;
@@ -166,6 +225,27 @@ exports.getProductById = (req, res) => {
     const productId = req.params.productId;
 
     Product.getByProductId(productId, (error, data) => {
+        if (error) {
+            if (error.kind === "not_found") {
+                return res.status(404).send({
+                    message: `Not found Product with id ${productId}.`
+                });
+            } else {
+                return res.status(500).send({
+                    message: `Error retrieving Product with id ${productId}`
+                });
+            }
+        }
+
+        
+        res.status(200).send(data);
+    });
+};
+
+exports.getRentalProductById = (req, res) => {
+    const productId = req.params.productId;
+
+    Product.getRentalProductById(productId, (error, data) => {
         if (error) {
             if (error.kind === "not_found") {
                 return res.status(404).send({
@@ -223,7 +303,7 @@ exports.getSaleProductsByOwnerId = (req, res) => {
 
 exports.getRentProductsByOwnerId = (req, res) => {
     const ownerId = req.params.ownerId;
-
+    console.log(`Owner Id: ${ownerId}`);
     Product.getRentProdsByOwnerId(ownerId, (error, data) => {
         if (error) {
             if (error.kind === "not_found") {
