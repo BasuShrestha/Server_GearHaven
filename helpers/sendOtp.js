@@ -7,7 +7,7 @@ const emailHelper = require("../helpers/sendMail");
 
 
 async function sendOTP(emailAddress, userName, callback) {
-    const otp = otpGenerator.generate(6, {
+    const OTP = otpGenerator.generate(6, {
         digits: true,
     upperCaseAlphabets: false,
         specialChars: false,
@@ -17,12 +17,12 @@ async function sendOTP(emailAddress, userName, callback) {
     const tte = 6 * 60 * 1000;
 
     const expiresIn = Date.now() + tte;
-    const data = `${emailAddress}.${otp}.${expiresIn}`;
+    const data = `${emailAddress}.${OTP}.${expiresIn}`;
 
     const hash = crypto.createHmac("sha256", key).update(data).digest("hex");
     const fullHashValue = `${hash}.${expiresIn}`;
 
-    var message = `Dear ${userName}, ${otp} is the one-time password for verifying your email.`;
+    var message = `Dear ${userName}, ${OTP} is the one-time password for verifying your email.`;
 
     var model = {
         email: emailAddress, // Sending the original email
@@ -30,7 +30,7 @@ async function sendOTP(emailAddress, userName, callback) {
         body: message,
     };
     
-    console.log(emailAddress, otp, expiresIn, data, hash, fullHashValue);
+    console.log(emailAddress, OTP, expiresIn, data, hash, fullHashValue);
 
     emailHelper.sendEmail(model, (error, result) => {
         if (error) {
@@ -42,33 +42,33 @@ async function sendOTP(emailAddress, userName, callback) {
 
 
 async function verifyOTP(params, callback) {
-    let [hashValue, expires] = params.hash.split('.');
+    let [hash, expiresIn] = params.fullHashValue.split('.');
 
     let now = Date.now();
 
-    if (now > parseInt(expires)) return callback("OTP EXPIRED");
+    if (now > parseInt(expiresIn)) return callback("OTP EXPIRED");
 
-    const emailWithDot = params.email;
-    let atIndex = emailWithDot.indexOf('@');
-    let localPart = emailWithDot.substring(0, atIndex);
-    let domainPart = emailWithDot.substring(atIndex);
+    const plainEmail = params.email;
+    let atIndex = plainEmail.indexOf('@');
+    let localPart = plainEmail.substring(0, atIndex);
+    let domainPart = plainEmail.substring(atIndex);
 
     // Replace only the first dot in the local part of the email
     localPart = localPart.replace('.', '');
 
     // Concatenate the modified local part with the domain part
-    const emailWithoutFirstDot = localPart + domainPart;
-    let data = `${emailWithoutFirstDot}.${params.otp}.${expires}`;
+    const escapedEmail = localPart + domainPart;
+    let data = `${escapedEmail}.${params.OTP}.${expiresIn}`;
 
-    console.log(emailWithoutFirstDot, params.otp, expires, data);
+    console.log(escapedEmail, params.OTP, expiresIn, data);
 
-    let newCalculateHash = crypto.createHmac("sha256", key).update(data).digest("hex");
-    console.log(newCalculateHash, `${newCalculateHash}.${expires}`);
+    let calculatedHash = crypto.createHmac("sha256", key).update(data).digest("hex");
+    console.log(calculatedHash, `${calculatedHash}.${expiresIn}`);
 
-    if (newCalculateHash === hashValue) {
-        return callback(null, "Success");
+    if (calculatedHash === hash) {
+        return callback(null, {verified : "true"});
     }
-    return callback("Invalid OTP");
+    return callback(null, {verified : "false"});
 }
 
 

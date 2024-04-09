@@ -33,7 +33,7 @@ const register = (req, res) => {
                 
             } else {
                 
-                sendOTP(req.body.email, req.body.username, (error, results) => {
+                sendOTP(req.body.email, req.body.username, (error, result) => {
                     if (error) {
                         return res.status(500).send({
                             message: "Error sending OTP",
@@ -62,8 +62,8 @@ const register = (req, res) => {
                             });
                         }
                         return res.status(200).send({
-                            message: 'Signed up successfully. Please check your email for the OTP to complete your registration.',
-                            data:results,
+                            message: 'Your account has been registered. Please verify your email using the OTP sent in your email.',
+                            fullHash: result,
                         });
                     });   
                     } 
@@ -73,18 +73,47 @@ const register = (req, res) => {
     }); 
 }
 
-const verifyUserOTP = (req, res) => {
-    verifyOTP(req.body, (error, results)=>{
+const resendOTP = (req, res) => {
+    sendOTP(req.body.email, req.body.userName, (error, result) => {
         if(error){
             return res.status(400).send({
                 message:"error",
-                data:error,
+                data: error,
             });
         }
+
         return res.status(200).send({
-            message:"Success",
-            data:results,
+            message: 'Resent verification mail',
+            data: result,
         });
+    });
+};
+
+const verifyUserOTP = (req, res) => {
+    verifyOTP(req.body, (error, result)=>{
+        if(error){
+            return res.status(400).send({
+                message:"error",
+                data: error,
+            });
+        }
+
+        if(result.verified == "true") {
+            console.log(`Email in the controller : ${req.body.email}`);
+            const plainEmail = req.body.email;
+            let atIndex = plainEmail.indexOf('@');
+            let localPart = plainEmail.substring(0, atIndex);
+            let domainPart = plainEmail.substring(atIndex);
+        
+            localPart = localPart.replace('.', '');
+        
+            const escapedEmail = localPart + domainPart;
+            console.log(escapedEmail);
+            conn.query(`UPDATE users SET is_verified = 1 WHERE user_email = '${escapedEmail}';`);
+            return res.status(200).send({message: "Email verification successful"});
+        } else if (result.verified == "false") {
+            return res.status(400).send({message: "The entered OTP is not valid"});
+        }
     });
 };
 
@@ -261,7 +290,7 @@ const verifyAccessToken = (req, res, next) => {
 //         if(error) throw error;
 
 //         return res.status(200).send({
-//             success:true, data:result[0], message:"Fetched successfully!"
+//             verified:true, data: result[0], message:"Fetched successfully!"
 //         });
 //     });
 // }
@@ -447,6 +476,7 @@ const updateProfile = (req,res)=>{
 module.exports = {
     register,
     verifyUserOTP,
+    resendOTP,
     verifyEmail,
     login,
     verifyRefreshToken,

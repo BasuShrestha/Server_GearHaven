@@ -4,6 +4,8 @@ const router = express.Router();
 
 const multer = require('multer');
 const path = require('path');
+
+const authenticateUser = require('../middleware/authentication');
 // const storage = multer.diskStorage({
 
 //     destination:function(req,file,cb){
@@ -88,6 +90,9 @@ router.get('/products/rent/owner/:ownerId', productController.getRentProductsByO
 
 // Get all sale products
 router.get('/products-sale', productController.getAllSaleProducts);
+
+// Add this line to route requests for filtered sale products
+router.post('/products-sale/filtered', productController.getFilteredSaleProducts);
 
 // Get all rent products
 router.get('/products-rent', productController.getAllRentProducts);

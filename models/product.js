@@ -85,7 +85,7 @@ Product.createForRent = (newProduct, ratePerDay, result) => {
 
                 const productId = res.insertId;
 
-                conn.query("INSERT INTO renting_rates (product_id, rate_per_day) VALUES (?, ?)", 
+                conn.query("INSERT INTO rentingrates (product_id, rate_per_day) VALUES (?, ?)", 
                     [productId, ratePerDay], (err, rateRes) => {
                     if(err){
                         conn.rollback(() => {
@@ -212,7 +212,7 @@ Product.updateProductForRent = (productId, updatedProduct, newRatePerDay, result
                         return;
                     }
 
-                    conn.query("UPDATE renting_rates SET rate_per_day = ? WHERE product_id = ?",
+                    conn.query("UPDATE rentingrates SET rate_per_day = ? WHERE product_id = ?",
                         [newRatePerDay, productId], (err, rateRes) => {
                             if (err) {
                                 conn.rollback(() => {
@@ -270,7 +270,7 @@ Product.updateProductForRentWithImage = (productId, updatedProduct, newRatePerDa
                         return;
                     }
 
-                    conn.query("UPDATE renting_rates SET rate_per_day = ? WHERE product_id = ?",
+                    conn.query("UPDATE rentingrates SET rate_per_day = ? WHERE product_id = ?",
                         [newRatePerDay, productId], (err, rateRes) => {
                             if (err) {
                                 conn.rollback(() => {
@@ -376,7 +376,7 @@ Product.getRentProdsByOwnerId = (id, result) => {
   JOIN productcategories ca ON p.productcategory_id = ca.category_id 
   JOIN productconditions co ON p.productcondition_id = co.productcondition_id 
   JOIN productsizes s ON p.productsize_id = s.productsize_id 
-  JOIN renting_rates r ON p.product_id = r.product_id 
+  JOIN rentingrates r ON p.product_id = r.product_id 
   LEFT JOIN (SELECT product_id, MAX(renting_id) AS latest_renting_id FROM rentings GROUP BY product_id) 
   AS latest_rentings ON p.product_id = latest_rentings.product_id
   LEFT JOIN rentings rs ON latest_rentings.latest_renting_id = rs.renting_id
@@ -439,6 +439,51 @@ Product.getAllSaleProducts = (result) => {
     });
 };
 
+Product.getFilteredSaleProducts = (filters, result) => {
+    let baseQuery = `SELECT p.*, o.user_name, ca.category_name, co.productcondition_name, s.productsize_name, o.fcm_token as seller_fcm
+                     FROM products p
+                     JOIN users o ON p.productowner_id = o.user_id
+                     JOIN productcategories ca ON p.productcategory_id = ca.category_id
+                     JOIN productconditions co ON p.productcondition_id = co.productcondition_id
+                     JOIN productsizes s ON p.productsize_id = s.productsize_id
+                     WHERE p.for_rent = 0 AND p.is_deleted = 0`;
+
+    let filterClauses = [];
+    let queryParams = [];
+
+    if (filters.categoryId) {
+        filterClauses.push("p.productcategory_id = ?");
+        queryParams.push(filters.categoryId);
+    }
+    if (filters.conditionId) {
+        filterClauses.push("p.productcondition_id = ?");
+        queryParams.push(filters.conditionId);
+    }
+    if (filters.sizeId) {
+        filterClauses.push("p.productsize_id = ?");
+        queryParams.push(filters.sizeId);
+    }
+    if (filters.priceMin !== undefined && filters.priceMax !== undefined) {
+        filterClauses.push("p.product_price BETWEEN ? AND ?");
+        queryParams.push(filters.priceMin, filters.priceMax);
+    }
+
+    if (filterClauses.length) {
+        baseQuery += " AND " + filterClauses.join(" AND ");
+    }
+
+    conn.query(baseQuery, queryParams, (err, res) => {
+        if (err) {
+            console.log(`Error: ${err}`);
+            result(err, null);
+            return;
+        }
+        console.log("Filtered Products: ", res);
+        result(null, res);
+    });
+};
+
+
 Product.getAllRentProducts = (result) => {
     conn.query(`SELECT 
     p.*, 
@@ -457,7 +502,7 @@ Product.getAllRentProducts = (result) => {
   JOIN productcategories ca ON p.productcategory_id = ca.category_id 
   JOIN productconditions co ON p.productcondition_id = co.productcondition_id 
   JOIN productsizes s ON p.productsize_id = s.productsize_id 
-  JOIN renting_rates r ON p.product_id = r.product_id 
+  JOIN rentingrates r ON p.product_id = r.product_id 
   LEFT JOIN (SELECT product_id, MAX(renting_id) AS latest_renting_id FROM rentings GROUP BY product_id) 
   AS latest_rentings ON p.product_id = latest_rentings.product_id
   LEFT JOIN rentings rs ON latest_rentings.latest_renting_id = rs.renting_id
@@ -492,7 +537,7 @@ Product.getRentalProductById = (productId, result) => {
   JOIN productcategories ca ON p.productcategory_id = ca.category_id 
   JOIN productconditions co ON p.productcondition_id = co.productcondition_id 
   JOIN productsizes s ON p.productsize_id = s.productsize_id 
-  JOIN renting_rates r ON p.product_id = r.product_id 
+  JOIN rentingrates r ON p.product_id = r.product_id 
   LEFT JOIN (SELECT product_id, MAX(renting_id) AS latest_renting_id FROM rentings GROUP BY product_id) 
   AS latest_rentings ON p.product_id = latest_rentings.product_id
   LEFT JOIN rentings rs ON latest_rentings.latest_renting_id = rs.renting_id

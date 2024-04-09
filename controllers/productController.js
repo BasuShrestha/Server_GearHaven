@@ -14,7 +14,8 @@ exports.createForSale = (req, res) => {
         categoryId: req.body.categoryId,
         sizeId: req.body.sizeId,
         conditionId: req.body.conditionId,
-        ownerId: req.body.ownerId
+        // ownerId: req.body.ownerId
+        ownerId: req.user.id
         // forRent: req.body.forRent
     });
 
@@ -61,48 +62,14 @@ exports.createForRent = (req, res) => {
     });
 };
 
-// exports.updateProduct = (req, res) => {
-//     if (!req.body) {
-//         return res.status(400).send({ message: "Product data is missing!" });
-//     }
-
-//     const productId = req.params.productId;
-
-//     const updatedProduct = {
-//         name: req.body.name,
-//         price: req.body.price,
-//         stockQuantity: req.body.stockQuantity,
-//         description: req.body.description,
-//         categoryId: req.body.categoryId,
-//         sizeId: req.body.sizeId,
-//         conditionId: req.body.conditionId,
-//         ownerId: req.body.ownerId,
-//         forRent: req.body.forRent,
-//         image: req.file ? req.file.filename : undefined
-//     };
-
-//     Product.updateProduct(productId, updatedProduct, (error, data) => {
-//         if (error) {
-//             if (error.kind === "not_found") {
-//                 res.status(404).send({
-//                     message: `Not found Product with id ${productId}.`
-//                 });
-//             } else {
-//                 res.status(500).send({
-//                     message: "Error updating Product with id " + productId
-//                 });
-//             }
-//         } else res.status(201).send(data);
-//     });
-// };
 
 exports.updateSalesProduct = (req, res) => {
     if (!req.body) {
         return res.status(400).send({ message: "Product data is missing!" });
     }
-
+    
     const productId = req.params.productId;
-
+    
     let updatedProduct = {
         name: req.body.name,
         price: req.body.price,
@@ -114,7 +81,7 @@ exports.updateSalesProduct = (req, res) => {
         ownerId: req.body.ownerId,
         // forRent: req.body.forRent
     };
-
+    
     if (req.file) {
         updatedProduct.image = req.file.filename;
         Product.updateSalesProductWithImage(productId, updatedProduct, (error, data) => {
@@ -151,10 +118,10 @@ exports.updateRentalProduct = (req, res) => {
     if (!req.body) {
         return res.status(400).send({ message: "Product data is missing!" });
     }
-
+    
     const productId = req.params.productId;
     const newRatePerDay = req.body.ratePerDay;
-
+    
     let updatedProduct = {
         name: req.body.name,
         price: req.body.price ?? 0.00,
@@ -165,7 +132,7 @@ exports.updateRentalProduct = (req, res) => {
         conditionId: req.body.conditionId ?? 8,
         ownerId: req.body.ownerId
     };
-
+    
     if (req.file) {
         updatedProduct.image = req.file.filename;
         Product.updateProductForRentWithImage(productId, updatedProduct, newRatePerDay, (error, data) => {
@@ -205,7 +172,7 @@ exports.updateRentalProduct = (req, res) => {
 
 exports.deleteProductById = (req, res) => {
     const productId = req.params.productId;
-
+    
     Product.deleteProductById(productId, (error, data) => {
         if (error) {
             if (error.kind === "not_found") {
@@ -223,7 +190,7 @@ exports.deleteProductById = (req, res) => {
 
 exports.getProductById = (req, res) => {
     const productId = req.params.productId;
-
+    
     Product.getByProductId(productId, (error, data) => {
         if (error) {
             if (error.kind === "not_found") {
@@ -236,7 +203,7 @@ exports.getProductById = (req, res) => {
                 });
             }
         }
-
+        
         
         res.status(200).send(data);
     });
@@ -244,7 +211,7 @@ exports.getProductById = (req, res) => {
 
 exports.getRentalProductById = (req, res) => {
     const productId = req.params.productId;
-
+    
     Product.getRentalProductById(productId, (error, data) => {
         if (error) {
             if (error.kind === "not_found") {
@@ -257,7 +224,7 @@ exports.getRentalProductById = (req, res) => {
                 });
             }
         }
-
+        
         
         res.status(200).send(data);
     });
@@ -265,7 +232,7 @@ exports.getRentalProductById = (req, res) => {
 
 exports.getProductsByOwnerId = (req, res) => {
     const ownerId = req.params.ownerId;
-
+    
     Product.getByOwnerId(ownerId, (error, data) => {
         if (error) {
             if (error.kind === "not_found") {
@@ -284,7 +251,7 @@ exports.getProductsByOwnerId = (req, res) => {
 
 exports.getSaleProductsByOwnerId = (req, res) => {
     const ownerId = req.params.ownerId; 
-
+    
     Product.getSalesProdsByOwnerId(ownerId, (error, data) => {
         if (error) {
             if (error.kind === "not_found") {
@@ -316,7 +283,7 @@ exports.getRentProductsByOwnerId = (req, res) => {
                 });
             }
         }
-
+        
         res.status(200).send(data);
     });
 };
@@ -332,6 +299,34 @@ exports.getAllSaleProducts = (req, res) => {
     });
 };
 
+exports.getFilteredSaleProducts = (req, res) => {
+    // Extract filter parameters from the request body
+    let filters = {
+        categoryId: req.body.categoryId,
+        conditionId: req.body.conditionId,
+        sizeId: req.body.sizeId,
+        priceMin: req.body.priceMin,
+        priceMax: req.body.priceMax
+    };
+
+    // Convert numeric strings to numbers if necessary
+    if (filters.priceMin) filters.priceMin = parseFloat(filters.priceMin);
+    if (filters.priceMax) filters.priceMax = parseFloat(filters.priceMax);
+
+    // Call the getFilteredSaleProducts method with the filters
+    Product.getFilteredSaleProducts(filters, (error, data) => {
+        if (error) {
+            res.status(500).send({
+                message: error.message || "Some error occurred while retrieving products."
+            });
+        } else {
+            res.status(200).send(data);
+        }
+    });
+};
+
+
+
 exports.getAllRentProducts = (req, res) => {
     Product.getAllRentProducts((error, data) => {
         if (error) {
@@ -341,4 +336,38 @@ exports.getAllRentProducts = (req, res) => {
         }
         res.status(200).send(data);
     });
+    // exports.updateProduct = (req, res) => {
+    //     if (!req.body) {
+    //         return res.status(400).send({ message: "Product data is missing!" });
+    //     }
+    
+    //     const productId = req.params.productId;
+    
+    //     const updatedProduct = {
+    //         name: req.body.name,
+    //         price: req.body.price,
+    //         stockQuantity: req.body.stockQuantity,
+    //         description: req.body.description,
+    //         categoryId: req.body.categoryId,
+    //         sizeId: req.body.sizeId,
+    //         conditionId: req.body.conditionId,
+    //         ownerId: req.body.ownerId,
+    //         forRent: req.body.forRent,
+    //         image: req.file ? req.file.filename : undefined
+    //     };
+    
+    //     Product.updateProduct(productId, updatedProduct, (error, data) => {
+    //         if (error) {
+    //             if (error.kind === "not_found") {
+    //                 res.status(404).send({
+    //                     message: `Not found Product with id ${productId}.`
+    //                 });
+    //             } else {
+    //                 res.status(500).send({
+    //                     message: "Error updating Product with id " + productId
+    //                 });
+    //             }
+    //         } else res.status(201).send(data);
+    //     });
+    // };
 };
