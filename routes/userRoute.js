@@ -27,7 +27,7 @@ const upload = multer({
 });
 
 const {signUpValidation, loginValidation, forgetValidation, updateProfileValidation} = require('../helpers/validation.js');
-const isAuth = require('../middleware/auth.js');
+const authorizeUser = require('../middleware/auth.js');
 
 const userController = require('../controllers/userController.js');
 
@@ -37,11 +37,18 @@ router.use(express.static('public'));
 router.post('/register', signUpValidation, userController.register);
 router.post('/verifyOTP', userController.verifyUserOTP);
 router.post('/resendOTP', userController.resendOTP);
-router.post('/login',loginValidation, userController.login);
+router.post('/login', loginValidation, userController.login);
+// router.post('/logout', authorizeUser, userController.logout);
+router.post('/logout', userController.logout);
+
+router.post('/updateFcmToken/:oldFcmToken', userController.updateFcmToken);
 router.post('/refresh-token', userController.verifyRefreshToken);
-router.get('/get-user', userController.verifyAccessToken, userController.getUser);
+
+router.get('/get-user', authorizeUser, userController.getUser);
+//router.get('/get-user', userController.getUser);
+
 router.post('/forget-password', forgetValidation, userController.forgetPassword);
 //router.post('/update-profile/:userId', upload.single('image'), updateProfileValidation, isAuth.isAuthorize, userController.updateProfile);
-router.post('/update-profile/:userId', upload.single('image'), updateProfileValidation, userController.updateProfile);
+router.post('/update-profile/:userId', upload.single('image'), updateProfileValidation, authorizeUser, userController.updateProfile);
 
 module.exports = router;

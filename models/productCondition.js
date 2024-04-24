@@ -46,7 +46,6 @@ ProductCondition.updateById = (id, productCondition, result) => {
             }
             
             if (res.affectedRows == 0) {
-                // No rows affected means the ID didn't exist
                 result({ kind: "not_found" }, null);
                 return;
             }
@@ -66,7 +65,6 @@ ProductCondition.deleteById = (id, result) => {
         }
         
         if (res.affectedRows == 0) {
-            // No rows found with that ID
             result({ kind: "not_found" }, null);
             return;
         }
@@ -89,8 +87,7 @@ ProductCondition.getById = (id, result) => {
             result(null, res[0]);
             return;
         }
-        
-        // No result for the given ID
+    
         result({ kind: "not_found" }, null);
     });
 };

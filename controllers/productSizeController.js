@@ -35,11 +35,11 @@ exports.updateById = (req, res) => {
         });
     }
 
-    ProductSize.updateById(req.params.sizeId, new ProductSize(req.body), (err, data) => { // Changed variable names and parameters to match sizes
+    ProductSize.updateById(req.params.sizeId, new ProductSize(req.body), (err, data) => {
         if(err) {
             if(err.kind === "not_found"){
                 res.status(404).send({
-                    message: `Product size with Id ${req.params.sizeId} not Found!` // Changed category to size
+                    message: `Product size with Id ${req.params.sizeId} not Found!`
                 });
             } else {
                 res.status(500).send({
@@ -54,11 +54,11 @@ exports.updateById = (req, res) => {
 
 exports.getById = (req, res) => {
 
-    ProductSize.getById(req.params.sizeId, (err, data) => { // Changed parameters and variable names to match sizes
+    ProductSize.getById(req.params.sizeId, (err, data) => {
         if(err){
             if(err.kind === "not_found") {
                 res.status(404).send({
-                    message: `Product size with Id ${req.params.sizeId} not Found!` // Changed category to size
+                    message: `Product size with Id ${req.params.sizeId} not Found!`
                 });
             } else {
                 res.status(500).send({
@@ -75,7 +75,7 @@ exports.getAll = (req, res) => {
     ProductSize.getAll((err, data) => {
         if(err) {
             res.status(500).send({
-                message: err.message || "Error while getting all Product Sizes" // Changed Product Categories to Product Sizes
+                message: err.message || "Error while getting all Product Sizes"
             });
         } else {
             res.status(200).send(data);
@@ -90,7 +90,7 @@ exports.deleteById = (req, res) => {
         });
     }
 
-    ProductSize.deleteById(req.params.sizeId, (err, data) => { // Changed parameters to match sizes
+    ProductSize.deleteById(req.params.sizeId, (err, data) => {
         if(err) {
             if(err.kind === "not_found"){
                 res.status(404).send({
@@ -113,11 +113,11 @@ exports.deleteAll = (req, res) => {
     ProductSize.deleteAll((err, data) => {
         if(err) {
             res.status(500).send({
-                message: err.message || "Error during deletion of all Product Sizes" // Changed Product Categories to Product Sizes
+                message: err.message || "Error during deletion of all Product Sizes"
             });
         } else {
             res.status(200).send({
-                message: `All Product Sizes deleted successfully!` // Changed Product Categories to Product Sizes
+                message: `All Product Sizes deleted successfully!`
             });
         } 
     });

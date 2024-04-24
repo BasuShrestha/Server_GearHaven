@@ -68,4 +68,28 @@ Renting.getRentingsByOwnerId = (id, result) => {
     });
 }
 
+Renting.getRentingsByRenterId = (id, result) => {
+    conn.query(`SELECT r.*, p.amount_paid, u.user_name, u.user_contact, u.user_location, u.fcm_token, pd.product_name, pd.product_image 
+                FROM rentings r JOIN payments p ON r.renting_id = p.transaction_id 
+                JOIN users u ON r.renter_id = u.user_id 
+                JOIN products pd ON r.product_id = pd.product_id 
+                WHERE r.renter_id = ?;`, 
+                id, 
+                (err, res) => {
+        if (err) {
+            console.log(`Error: ${err}`);
+            result(err, null);
+            return;
+        }
+        
+        if (res.length) {
+            console.log("Renting details: ", res);
+            result(null, res);
+            return;
+        }
+        
+        result({ kind: "not_found" }, null);
+    });
+}
+
 module.exports = Renting;

@@ -30,7 +30,7 @@ Payment.verifyPayment = (token, amount, callback) => {
     });
 }
 
-Payment.saveSalesPayment = (newPayment, result) => {
+Payment.saveSalesPayment = (newPayment, orderId, result) => {
     conn.beginTransaction(err => {
         if (err) {
             console.error(`Transaction Begin Error: ${err.message}`);
@@ -49,7 +49,7 @@ Payment.saveSalesPayment = (newPayment, result) => {
 
             const paymentId = res.insertId;
             
-            conn.query(`UPDATE orders SET order_status = 'Paid' WHERE order_id = ?`, [newPayment.orderId], (err, res) => {
+            conn.query(`UPDATE orders SET order_status = 'Paid' WHERE order_id = ?`, [orderId], (err, res) => {
                 if (err) {
                     return conn.rollback(() => {
                         console.error(`Order Update Error: ${err}`);
@@ -57,7 +57,7 @@ Payment.saveSalesPayment = (newPayment, result) => {
                     });
                 }
 
-                conn.query(`UPDATE orderdetails SET delivery_status = 'Pending' WHERE order_id = ?`, [newPayment.orderId], (err, res) => {
+                conn.query(`UPDATE orderdetails SET delivery_status = 'Pending' WHERE order_id = ?`, [orderId], (err, res) => {
                     if (err) {
                         return conn.rollback(() => {
                             console.error(`Order Update Error: ${err}`);
@@ -68,7 +68,7 @@ Payment.saveSalesPayment = (newPayment, result) => {
                     conn.query(`UPDATE users u JOIN (SELECT seller_id, line_total FROM orderdetails 
                                 WHERE order_id = ? GROUP BY seller_id) od ON u.user_id = od.seller_id 
                                 SET u.total_income = u.total_income + od.line_total`, 
-                            [newPayment.orderId], (err, res) => {
+                            [orderId], (err, res) => {
                         if (err) {
                             return conn.rollback(() => {
                                 console.error(`User Update Error: ${err}`);
@@ -80,7 +80,7 @@ Payment.saveSalesPayment = (newPayment, result) => {
                                     WHERE order_id = ? GROUP BY product_id) od ON p.product_id = od.product_id 
                                     SET p.productstock_quantity = p.productstock_quantity - od.quantity 
                                     WHERE p.productowner_id IN (SELECT seller_id FROM orderdetails WHERE order_id = ?)`, 
-                                [newPayment.orderId, newPayment.orderId], (err, res) => {
+                                [orderId, orderId], (err, res) => {
                             if (err) {
                                 return conn.rollback(() => {
                                     console.error(`Product Update Error: ${err}`);

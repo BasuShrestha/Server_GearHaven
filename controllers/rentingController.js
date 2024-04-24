@@ -40,7 +40,11 @@ exports.updateRentalStatus = (req, res) => {
                                 await sendNotification.sendNotificationMulticast(fcmTokens,
                                     `${productName} available for renting`, 'A product you had in your wishlist is now available!',
                                     {
-                                        messageType: "productAvailability"
+                                        type: "wishlist",
+                                        title: `${productName} is available for renting`,
+                                        body: `A product you had in your wishlist is available for renting`,
+                                        notificationDate: new Date().toISOString(),
+                                        eventDate: new Date().toISOString()
                                     });
                                 console.log('Notification sent successfully');
         
@@ -76,6 +80,25 @@ exports.getRentingsByOwnerId = (req, res) => {
             } else {
                 return res.status(500).send({
                     message: `Error retrieving rentings for owner id ${ownerId}`
+                });
+            }
+        }
+        res.status(200).send(data);
+    });
+}
+
+exports.getRentingsByRenterId = (req, res) => {
+    const renterId = req.params.renterId;
+
+    Renting.getRentingsByOwnerId(renterId, (error, data) => {
+        if (error) {
+            if (error.kind === "not_found") {
+                return res.status(404).send({
+                    message: `No rentings found with owner id ${renterId}.`
+                });
+            } else {
+                return res.status(500).send({
+                    message: `Error retrieving rentings for owner id ${renterId}`
                 });
             }
         }

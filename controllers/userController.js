@@ -28,7 +28,7 @@ const register = (req, res) => {
 
             if (result && result.length) {
                 return res.status(409).send({
-                    message: 'The user already exists'
+                    message: 'User already exists with the email address'
                 });
                 
             } else {
@@ -51,9 +51,10 @@ const register = (req, res) => {
                     const userName = conn.escape(req.body.username);
                     const userLocation = conn.escape(req.body.location);
                     const userContact = conn.escape(req.body.contact);
-                    const fcmToken = conn.escape(req.body.fcmToken);
+                    //const fcmToken = conn.escape(req.body.fcmToken);
 
-                    const sql = `INSERT INTO users (user_name, user_email, user_password, user_location, user_contact, fcm_token) VALUES (${userName}, ${userEmail}, ${conn.escape(hash)}, ${userLocation}, ${userContact}, ${fcmToken})`;
+                    // const sql = `INSERT INTO users (user_name, user_email, user_password, user_location, user_contact, fcm_token) VALUES (${userName}, ${userEmail}, ${conn.escape(hash)}, ${userLocation}, ${userContact}, ${fcmToken})`;
+                    const sql = `INSERT INTO users (user_name, user_email, user_password, user_location, user_contact) VALUES (${userName}, ${userEmail}, ${conn.escape(hash)}, ${userLocation}, ${userContact})`;
 
                     conn.query(sql, (insertErr) => {
                         if (insertErr) {
@@ -144,7 +145,10 @@ const login = (req,res) => {
     if (!errors.isEmpty()) {
         return res.status(400).send({ errors: errors.array() });
     }
-    const sql = `SELECT * FROM users WHERE user_email = ${conn.escape(req.body.email)};`;
+    const userEmail = conn.escape(req.body.email);
+    const fcmToken = req.body.fcmToken;
+    console.log(`FCM received: ${fcmToken}`);
+    const sql = `SELECT * FROM users WHERE user_email = ${userEmail};`;
 
     conn.query(sql, (err, result) => {
         if (err) {
@@ -154,7 +158,7 @@ const login = (req,res) => {
         }
         if (!result.length) {
             return res.status(404).send({
-                message: 'Email not found!'
+                message: 'User with the email address could not be found!'
             });
         }
             bcrypt.compare(
@@ -168,29 +172,35 @@ const login = (req,res) => {
                         });
                     }
                     if(passwordMatch){
-                        const accessToken = jwt.sign({id:result[0]['user_id']},ACCESS_TOKEN_SECRET,{expiresIn :'3m'});
-                         const refreshToken = jwt.sign({id:result[0]['user_id']},REFRESH_TOKEN_SECRET,{expiresIn :'7d'});
-                         const refreshTokenExpiration = new Date();
-                         refreshTokenExpiration.setDate(refreshTokenExpiration.getDate() + 7);
-                         conn.query('UPDATE users SET refresh_token_expiration = ?, refresh_token = ? WHERE user_id = ?', 
-                         [refreshTokenExpiration, refreshToken, result[0]['user_id']],
-                         (err, rest) => {
-                            if(err) {
-                                return res.status(500).send({
-                                    message: 'Internal Server Error'
-                                });
+                        const updateTokenSql = `UPDATE users SET fcm_token = '${fcmToken}' WHERE user_id = ${result[0]['user_id']}`;
+                        conn.query(updateTokenSql, (updateErr, updateResult) => {
+                            if(updateErr) {
+                                return res.status(500).send({ message: 'Error updating FCM token' });
                             }
-                            
-                            return res.status(200).send({
-                               message : 'Login successful!',
-                               accessToken: accessToken, 
-                               refreshToken: refreshToken,
-                               user: result[0]
-                           });
-                         });
+                            const accessToken = jwt.sign({id:result[0]['user_id']},ACCESS_TOKEN_SECRET,{expiresIn :'3m'});
+                            const refreshToken = jwt.sign({id:result[0]['user_id']},REFRESH_TOKEN_SECRET,{expiresIn :'2d'});
+                            const refreshTokenExpiration = new Date();
+                            refreshTokenExpiration.setDate(refreshTokenExpiration.getDate() + 7);
+                            conn.query('UPDATE users SET refresh_token_expiration = ?, refresh_token = ? WHERE user_id = ?', 
+                            [refreshTokenExpiration, refreshToken, result[0]['user_id']],
+                            (err, rest) => {
+                                if(err) {
+                                    return res.status(500).send({
+                                        message: 'Internal Server Error'
+                                    });
+                                }
+                                
+                                return res.status(200).send({
+                                    message : 'Login successful!',
+                                    accessToken: accessToken, 
+                                    refreshToken: refreshToken,
+                                    user: result[0]
+                                });
+                            });
+                        });
                     } else {
                         return res.status(401).send({
-                            message:'Incorrect Password!'
+                            message:'The password entered was incorrect!'
                         });                           
                     }
                 }
@@ -198,6 +208,43 @@ const login = (req,res) => {
         }
     )
 }
+
+const logout = (req, res) => {
+    const userId = req.user.id;
+
+    if (!userId) {
+        return res.status(400).send({ message: 'User ID is required' });
+    }
+
+    const logoutSql = 'UPDATE users SET fcm_token = NULL WHERE user_id = ?';
+
+    conn.query(logoutSql, [userId], (err, result) => {
+        if (err) {
+            return res.status(500).send({ message: 'Error during logout' });
+        }
+
+        return res.status(200).send({ message: 'Logged out successfully' });
+    });
+};
+
+const updateFcmToken = (req, res) => {
+    const oldFcmToken = req.params.oldFcmToken;
+    const newFcmToken = req.body.newFcmToken;
+
+    if (!userId || !fcmToken) {
+        return res.status(400).send({ message: 'FCM tokens are required' });
+    }
+
+    const updateTokenSql = `UPDATE users SET fcm_token = ${newFcmToken} WHERE fcm_token = ${oldFcmToken}`;
+
+    conn.query(updateTokenSql, (err, result) => {
+        if (err) {
+            return res.status(500).send({ message: 'Error updating FCM token' });
+        }
+        return res.status(200).send({ message: 'FCM token updated successfully' });
+    });
+};
+
 
 const verifyRefreshToken = (req, res) => {
     const refreshToken = req.body.refreshToken;
@@ -252,7 +299,7 @@ const verifyAccessToken = (req, res, next) => {
 
     jwt.verify(accessToken, ACCESS_TOKEN_SECRET, (err, user) => {
         if(err) {
-            return res.status(401).send({
+            return res.status(403).send({
                 message: 'Invalid Access Token'
             });
         }
@@ -260,40 +307,6 @@ const verifyAccessToken = (req, res, next) => {
         next();
     });
 }
-
-// const getUser = (req, res) => {
-//     const authToken = req.headers.authorization.split(' ')[1];
-//     const decodeToken = jwt.verify(authToken, JWT_SECRET);
-
-//     const user_id = req.user_id;
-//     conn.query(`SELECT * FROM users WHERE user_id = ?`,
-//     [decodeToken.id],
-//     (err, result, fields) => {
-//         if(err) {
-//             return res.status(500).send({
-//                 message: 'Server Error While getting user details'
-//             });
-//         } else {
-//             return res.status(200).send({
-//                 data: result[0]
-//             });
-//         }
-//     });
-// }
-
-// const getUser = (req, res) => {
-
-//     const authToken = req.headers.authorization.split(' ')[1];
-//     const decodeToken = jwt.verify(authToken, JWT_SECRET);
-
-//     conn.query('SELECT * FROM userprofiles where user_id=?', decodeToken.id, function(error, result, fields){
-//         if(error) throw error;
-
-//         return res.status(200).send({
-//             verified:true, data: result[0], message:"Fetched successfully!"
-//         });
-//     });
-// }
 
 const forgetPassword = (req, res)=>{
 
@@ -393,45 +406,6 @@ const getUser = (req,res) => {
     });
 }
 
-
-// const updateProfile = (req,res)=>{
-//     try{
-//         const errors = validationResult(req);
-
-//         if(!errors.isEmpty()){
-//             return res.status(400).json({
-//                 errors:errors.array()
-//             });
-//          }
-        
-//          const token = req.headers.authorization.split(' ')[1];
-//          const decodeToken = jwt.verify(token, JWT_SECRET);
-
-//          var sql = '', data;
-
-//          if(req.file != null){
-//             sql = 'UPDATE users SET user_name = ?, user_email = ?, user_contact = ?, user_location = ?, profile_image = ? WHERE user_id = ?';
-//             data = [req.body.username, req.body.email, req.body.contact, req.body.location, 'images/'+req.file.filename, decodeToken.id];
-//          } else {
-//             sql = 'UPDATE users SET user_name = ?, user_email = ?, user_contact = ?, user_location, = ? WHERE user_id = ?';
-//             data = [req.body.username, req.body.email, req.body.contact, req.body.location, decodeToken.id];
-//          }
-
-//          conn.query(sql, data, function(error, result, fields){
-//             if(error){
-//                 res.status(400).send({message: error.message});
-//             }
-//             res.status(200).send({message: "Profile Updated Successfully!"});
-//          });
-
-//     }catch(error){
-//         return res.status(400).json({message: error.message});
-//         // console.log(error.message);
-//     }
-    
-
-// }
-
 const updateProfile = (req,res)=>{
     try{
         const errors = validationResult(req);
@@ -442,7 +416,7 @@ const updateProfile = (req,res)=>{
             });
          }
 
-         const userId = req.params.userId;
+         const userId = req.user.id;
         
         //  const token = req.headers.authorization.split(' ')[1];
         //  const decodeToken = jwt.verify(token, ACCESS_TOKEN_SECRET);
@@ -466,7 +440,6 @@ const updateProfile = (req,res)=>{
 
     }catch(error){
         return res.status(400).json({message: `Update Catch 400: ${error.message}`});
-        // console.log(error.message);
     }
     
 
@@ -479,6 +452,8 @@ module.exports = {
     resendOTP,
     verifyEmail,
     login,
+    logout,
+    updateFcmToken,
     verifyRefreshToken,
     verifyAccessToken,
     forgetPassword,

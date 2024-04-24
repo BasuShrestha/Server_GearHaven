@@ -72,8 +72,8 @@ Product.createForRent = (newProduct, ratePerDay, result) => {
         }
 
         conn.query("INSERT INTO products (product_name, product_price, productstock_quantity, product_desc, product_image, productcategory_id, productsize_id, productcondition_id, productowner_id, for_rent)" 
-                        + "VALUES (?,?,?,?,?,?,?,?,?,1)",
-                [newProduct.name, newProduct.price, newProduct.stockQuantity, newProduct.description, newProduct.image, newProduct.categoryId, newProduct.sizeId, newProduct.conditionId, newProduct.ownerId],
+                        + "VALUES (?,?,1,?,?,?,?,?,?,1)",
+                [newProduct.name, newProduct.price, newProduct.description, newProduct.image, newProduct.categoryId, newProduct.sizeId, newProduct.conditionId, newProduct.ownerId],
                 (err, res) => {
                 if(err){
                     conn.rollback(() => {
@@ -192,17 +192,25 @@ Product.updateProductForRent = (productId, updatedProduct, newRatePerDay, result
             return;
         }
 
+        console.log("Updating Product:", updatedProduct);
+
+        console.log(updatedProduct.name);
+        console.log(updatedProduct.price);
+        console.log(updatedProduct.description);
+        console.log(updatedProduct.categoryId);
+        console.log(updatedProduct.sizeId);
+        console.log(updatedProduct.conditionId);
         conn.query(`UPDATE products SET product_name = ?, 
                     product_price = ?, 
-                    productstock_quantity = ?, 
+                    productstock_quantity = 1, 
                     product_desc = ?, 
                     productcategory_id = ?, 
                     productsize_id = ?, 
                     productcondition_id = ? 
                     WHERE product_id = ?`,
-                [updatedProduct.name, updatedProduct.price, updatedProduct.stockQuantity, 
-                    updatedProduct.description, updatedProduct.categoryId, updatedProduct.sizeId, 
-                    updatedProduct.conditionId, productId],
+                [updatedProduct.name, updatedProduct.price, updatedProduct.description, 
+                    updatedProduct.categoryId, updatedProduct.sizeId, 
+                    updatedProduct.conditionId ?? 8, productId],
                 (err, res) => {
                     if (err) {
                         conn.rollback(() => {
@@ -211,7 +219,7 @@ Product.updateProductForRent = (productId, updatedProduct, newRatePerDay, result
                         });
                         return;
                     }
-
+                    console.log(newRatePerDay);
                     conn.query("UPDATE rentingrates SET rate_per_day = ? WHERE product_id = ?",
                         [newRatePerDay, productId], (err, rateRes) => {
                             if (err) {
@@ -250,15 +258,14 @@ Product.updateProductForRentWithImage = (productId, updatedProduct, newRatePerDa
 
         conn.query(`UPDATE products SET product_name = ?, 
                     product_price = ?, 
-                    productstock_quantity = ?, 
+                    productstock_quantity = 1, 
                     product_desc = ?, 
                     product_image = ?, 
                     productcategory_id = ?, 
                     productsize_id = ?, 
                     productcondition_id = ? 
                     WHERE product_id = ?`,
-                [updatedProduct.name, updatedProduct.price, 
-                    updatedProduct.stockQuantity, updatedProduct.description, 
+                [updatedProduct.name, updatedProduct.price, updatedProduct.description, 
                     updatedProduct.image, updatedProduct.categoryId, 
                     updatedProduct.sizeId, updatedProduct.conditionId, productId],
                 (err, res) => {
@@ -353,7 +360,6 @@ Product.getSalesProdsByOwnerId = (id, result) => {
             return;
         }
         
-        // No result for the given ID
         result({ kind: "not_found" }, null);
     });
 };
@@ -394,7 +400,6 @@ Product.getRentProdsByOwnerId = (id, result) => {
             return;
         }
         
-        // No result for the given ID
         result({ kind: "not_found" }, null);
     });
 };
@@ -422,7 +427,7 @@ Product.deleteProductById = (id, result) => {
 };
 
 Product.getAllSaleProducts = (result) => {
-    conn.query(`SELECT p.*, o.user_name, ca.category_name, co.productcondition_name, s.productsize_name, o.fcm_token as seller_fcm FROM products p 
+    conn.query(`SELECT p.*, o.user_name, o.user_location, o.user_contact, o.profile_image, ca.category_name, co.productcondition_name, s.productsize_name, o.fcm_token as seller_fcm FROM products p 
     JOIN users o ON p.productowner_id = o.user_id 
     JOIN productcategories ca ON p.productcategory_id = ca.category_id 
     JOIN productconditions co ON p.productcondition_id = co.productcondition_id 

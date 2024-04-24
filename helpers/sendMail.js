@@ -9,7 +9,7 @@ async function sendEmail(params, callback){
         requireTLS:true,
         auth: {
             user: 'basu.stha4@gmail.com',
-            pass: 'otrjqumnljjatwdr'
+            pass: 'tpbvcddrvfcwdvxe'
         }
     });
     

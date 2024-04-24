@@ -6,7 +6,6 @@ const path = require('path');
 
 const {create, getAll, getById, updateById, deleteById, deleteAll} = require('../controllers/productCategoryController');
 
-// Pet Category Routes
 router.post('/product-category', create);
 router.get('/product-category', getAll);
 router.get('/product-category/:productCategoryId', getById);

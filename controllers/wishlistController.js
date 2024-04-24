@@ -7,8 +7,10 @@ exports.addToWishlist = (req, res) => {
         return res.status(400).send({ message: "Wishlist data is missing!" });
     }
     
+    const userId = req.user.id;  
+
     const newWishlistEntry = new Wishlist({
-        userId: req.body.userId,
+        userId: userId,
         productId: req.body.productId
     });
 

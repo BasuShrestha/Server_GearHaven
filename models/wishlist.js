@@ -53,7 +53,6 @@ Wishlist.removeFromWishlistByUserId = (userId, productId, result) => {
                 return;
             }
             if (res.affectedRows == 0) {
-                // This means the wishlist item was not found for this user; it may be handled as needed.
                 result({ kind: "not_found" }, null);
                 return;
             }
@@ -74,9 +73,9 @@ Wishlist.findWishlistItemByUserIdAndProductId = (userId, productId, result) => {
             }
 
             if (res.length) {
-                result(null, res[0]); // Item exists
+                result(null, res[0]);
             } else {
-                result(null, null); // Item does not exist
+                result(null, null);
             }
         }
     );

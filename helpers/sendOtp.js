@@ -25,7 +25,7 @@ async function sendOTP(emailAddress, userName, callback) {
     var message = `Dear ${userName}, ${OTP} is the one-time password for verifying your email.`;
 
     var model = {
-        email: emailAddress, // Sending the original email
+        email: emailAddress,
         subject: "Registration OTP",
         body: message,
     };
@@ -36,7 +36,7 @@ async function sendOTP(emailAddress, userName, callback) {
         if (error) {
             return callback(error);
         }
-        return callback(null, fullHashValue); // Send the fullHash for verification
+        return callback(null, fullHashValue);
     });
 }
 
@@ -53,10 +53,8 @@ async function verifyOTP(params, callback) {
     let localPart = plainEmail.substring(0, atIndex);
     let domainPart = plainEmail.substring(atIndex);
 
-    // Replace only the first dot in the local part of the email
     localPart = localPart.replace('.', '');
 
-    // Concatenate the modified local part with the domain part
     const escapedEmail = localPart + domainPart;
     let data = `${escapedEmail}.${params.OTP}.${expiresIn}`;
 
